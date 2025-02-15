@@ -45,7 +45,7 @@ class Line:
 
         # in the case of a vertical line, correct code shouldn't input "T" or "B"
         # so we don't care about "y_on_line"
-        if (self.p1[0] == self.p2[0]):
+        if (self.p1[0] == self.p2[0]): # vertical line have same x
             y_on_line = 0
             x_on_line = self.p1[0]
         # in the case of a horzontal line, correct code shouldn't input "R" or "L"
@@ -189,7 +189,7 @@ def construct_map(isEasy, resolution):
     y_disc = MAP_HEIGHT * RESOLUTION
     
     # Discritized Image
-    # numpy does y first, then x
+    # numpy does y first, then x. #grey scale image
     img = numpy.zeros((y_disc, x_disc, 3), dtype=numpy.uint8)
 
     for col in range(x_disc):
@@ -205,13 +205,15 @@ def construct_map(isEasy, resolution):
 # that for some reason start with y values, then x values (blame plt, not me)
 
 # Example plt code using img result from construct_map:
-isEasy = False
+isEasy = True
 # Don't have less than 1 resolution...
 # RESOLUTION is the number of points you want per inch
 # (anything larger than 20 takes a while)
-resolution = 4
-img = construct_map(isEasy, resolution)
 
-plt.imshow(img, cmap=plt.cm.gray, origin='lower')
-plt.show()
+if __name__ == "__main__":
+    resolution = 1
+    img = construct_map(isEasy, resolution)
+
+    plt.imshow(img, cmap=plt.cm.gray, origin='lower')
+    plt.show()
 
