@@ -42,7 +42,7 @@ class VisibilityGraph:
         self.resolution = RESOLUTION
         
         self.flattened_vertexes = np.array(list(itertools.chain(*obstacle_vertexes)))
-        additional_points =  np.array([(0, self.h), (self.w, 0), (0, self.w), (self.h, self.w), start_point, end_point])
+        additional_points =  np.array([start_point, end_point])
         
         self.flattened_vertexes = np.vstack([self.flattened_vertexes, additional_points])
         
@@ -55,7 +55,7 @@ class VisibilityGraph:
         
   
         
-    def _fill_graph(self):
+    def _fill_graph(self, ax = None):
         
         #fills diagonal of adjacency matrix with 0s. Each element is connected to itself
         np.fill_diagonal(self.graph, 0)
@@ -63,11 +63,23 @@ class VisibilityGraph:
         #compute cartesian product to get all possible combinations of vertices
         vertexes_to_evaluate = list(itertools.product(self.flattened_vertexes, self.flattened_vertexes))
         
-        #check if edge does not pass through object
+        #evaluate all pair to check if it is a valid one. If it is, set that cell to the distance between the two points (i.e. the weight)
+        for pair in vertexes_to_evaluate: 
+            
+            if np.all(pair[0] == pair[1]): 
+                continue
+            
+            if self._is_valid_line(pair[0], pair[1]):
+                vertex1, vertex2 = pair
+                
+                print(f"Found Valid Line {pair}")
+                if ax: 
+                    ax.plot([vertex1[0], vertex2[0]], [vertex1[1], vertex2[1]], 'b-', linewidth=1)  # 'r-' for red line
+
         
         #get all points of the line through Bresenham line algorithm
                        
-    def _is_valid_line(self, p1, p2, ax):
+    def _is_valid_line(self,  p1: tuple, p2: tuple, ax = None) -> bool:
         """
         Check if the the line connecting two vertices lies only in free space, i.e. does not go through obstacles.
         It uses Bresenham's Line Algorithm to get all the integer points on a line.
@@ -75,10 +87,12 @@ class VisibilityGraph:
         Parameters:
         - x1, y1: Start point (integer coordinates)
         - x2, y2: End point (integer coordinates)
+        - ax: ax of matplotlib.pyplot figure used to plot the line being evaluated for debugging purposes
 
         Returns:
         - List of (x, y) tuples representing points on the line.
         """
+       
         points = []  # Stores points on the line
         x1, y1 = p1
         x2, y2 = p2
@@ -108,21 +122,21 @@ class VisibilityGraph:
                 err += dx
                 y1 += sy
             
-            circle = patches.Circle((x1, y1), 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "none")
-            ax.add_patch(circle)
+            #Used for debug: plot current line if needed
+            if ax: 
+                circle = patches.Circle((x1, y1), 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "none")
+                ax.add_patch(circle)
             
-            #if np.any(self.map[y1, x1]>0): #return False if there is an obstacle
-            #    return False, (x1, y1)
+            if np.any(self.map[y1, x1]>0): #return False if there is an obstacle
+                return False
             
-        return True, (x1, y1)
+        return True
 
-    def __repr__(self):
+    def __repr__(self) -> np.ndarray:
         
         return self.map
     
-    def display(self, ax):
-        
-
+    def display(self, ax) -> None:
         
         for vertex in self.flattened_vertexes:
      
@@ -132,7 +146,7 @@ class VisibilityGraph:
         ax.imshow(self.map)
        
         
-    def _dist(self, p1, p2): 
+    def _dist(self, p1: tuple, p2: tuple) -> np.float32: 
         """
         Calculates euclidean distance between two points
         
@@ -157,6 +171,6 @@ if __name__ == "__main__":
     
     map = construct_map(isEasy=True, resolution=RESOLUTION)
     graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, RESOLUTION)
-    print(graph._is_valid_line(START,END, ax))
+    graph._fill_graph(ax)
     graph.display(ax)
     plt.show()
