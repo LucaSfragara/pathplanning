@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from construct_map import construct_map
 import itertools
+import heapq
+from typing import List, Tuple
 
 #List of (x, y) coordinates
 OBSTACLE_COORDINATES_EASY = [
@@ -31,7 +33,6 @@ OBSTACLE_COORDINATES_EASY = [
     [(38, 42), (38, 36)],  # Left
 ]
 
-
 class VisibilityGraph:
     
     
@@ -39,30 +40,79 @@ class VisibilityGraph:
         
         self.map = map #(H, W, C), where C is False if free space and X and True if Obstacle
         self.h, self.w, _ = map.shape
-        self.resolution = RESOLUTION
+        self.resolution = resolution
+        self.start = tuple(x*resolution for x in start_point)
+        self.end = tuple(x*resolution for x in end_point)
         
-        self.flattened_vertexes = np.array(list(itertools.chain(*obstacle_vertexes)))
+        self.flattened_vertexes = np.array(list(itertools.chain(*obstacle_vertexes)), dtype = int)
         additional_points =  np.array([start_point, end_point])
         
-        self.flattened_vertexes = np.vstack([self.flattened_vertexes, additional_points])
+        self.flattened_vertexes = np.vstack([additional_points, self.flattened_vertexes])
         
         #scale vertexes: 
         self.flattened_vertexes = self.flattened_vertexes * resolution
         
         self.vertexes = obstacle_vertexes
         self.n_vertexes = len(obstacle_vertexes) 
-        self.graph = np.full((len(self.flattened_vertexes), len(self.flattened_vertexes)),np.inf) #adjacency matrix all set to infinity (no connection between vertices)
+        #self.graph = np.full((len(self.n_vertexes) +2, len(self.n_vertexes) +2),np.inf) #adjacency matrix all set to infinity (no connection between vertices)
+        self.graph = {} #dictionary holding nodes (as keys) and all respective connected nodes. {<SOURCE>: [(<SINK>, <DISTANCE>)]}
         
-  
+    def djistra_shortest_path(self, ax = None) -> Tuple[List, float]:
+        
+        """
+        Returns a list containing the hortest path between the START and END NODE and the corresponding total distance
+        Parameters:
+        - ax: (matplotlib.pyplot ax) provide for plotting shortest path
+        """
+        
+        graph = self.graph
+            
+        #Priority Queue (min-heap) for selecting node with smallest distance efficiently
+        pq = [(0, self.start)] #distance, node NOTE: HEAPQ orders element based on the first element of the tuple
+        
+        distances = {node: np.inf for node in self.graph.keys()} #initially set all the distances to infinity
+
+        previous_node = {node: None for node in self.graph.keys()} #contain pointer to "best" previous node for each node. Used for path reconstruction
+        
+        while pq:
+    
+            current_distance, current_node = heapq.heappop(pq) #get smallest item
+            if current_distance > distances[current_node]: #if we found a shorter path than the current one, skip
+                continue
+            
+            for neighbor, weight in graph[current_node]:
+                
+                distance = current_distance + weight #get total distance
+                
+                if distance < distances[neighbor]: #if current distance smaller than distance so far, update the dict
+                    distances[neighbor] = distance
+                    heapq.heappush(pq, (distance, neighbor))
+                    previous_node[neighbor] = current_node
+                    
+        #reconstruct path given a dictionary of nodes and the best previous node
+        path = []
+        current = self.end #pointer is set to end
+        
+        while current is not self.start: 
+            
+            path.append(current)
+            current = previous_node[current]
+        
+        path.reverse() #invert the path to go from START to END
+        path.insert(0, self.start)
+        print(path)
+        if ax:
+            for i in range(len(path)-1):
+                ax.plot([path[i][0], path[i+1][0]], [path[i][1], path[i+1][1]], "w-", linewidth = 1.5)
+                pass 
+        return path, distances[self.end]
+        
         
     def _fill_graph(self, ax = None):
         
-        #fills diagonal of adjacency matrix with 0s. Each element is connected to itself
-        np.fill_diagonal(self.graph, 0)
-        
         #compute cartesian product to get all possible combinations of vertices
         vertexes_to_evaluate = list(itertools.product(self.flattened_vertexes, self.flattened_vertexes))
-        
+
         #evaluate all pair to check if it is a valid one. If it is, set that cell to the distance between the two points (i.e. the weight)
         for pair in vertexes_to_evaluate: 
             
@@ -72,11 +122,23 @@ class VisibilityGraph:
             if self._is_valid_line(pair[0], pair[1]):
                 vertex1, vertex2 = pair
                 
-                print(f"Found Valid Line {pair}")
+                #convert vertexes from array to tuple, which is hashable and we can use it as dict key
+                vertex1 = (vertex1[0].item(),vertex1[1].item()) 
+                vertex2 = (vertex2[0].item(), vertex2[1].item())
+                
+                distance = self._dist(vertex1, vertex2)
+                
+                if vertex1 in self.graph.keys():
+                    
+                    self.graph[vertex1].add((vertex2, distance)) #create element in the graph dcitionary
+                
+                else: 
+                    self.graph[vertex1] = {(vertex2, distance)}
+                
                 if ax: 
-                    ax.plot([vertex1[0], vertex2[0]], [vertex1[1], vertex2[1]], 'b-', linewidth=1)  # 'r-' for red line
+                    
+                    ax.plot([vertex1[0], vertex2[0]], [vertex1[1], vertex2[1]], 'w:', linewidth=0.3)  
 
-        
         #get all points of the line through Bresenham line algorithm
                        
     def _is_valid_line(self,  p1: tuple, p2: tuple, ax = None) -> bool:
@@ -158,7 +220,7 @@ class VisibilityGraph:
         - distance (np.float32)
         """
         
-        return np.sqrt((p1[0]-p2[0])**2 + (p1[1] - p2[1])**2)
+        return np.sqrt((p1[0]-p2[0])**2 + (p1[1] - p2[1])**2).item()
 
 if __name__ == "__main__":
     
@@ -167,10 +229,12 @@ if __name__ == "__main__":
     
     RESOLUTION = 4
     START = (10,10) #in inches
-    END = (60,4) #in inches
+    END = (60,50) #in inches
     
     map = construct_map(isEasy=True, resolution=RESOLUTION)
     graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, RESOLUTION)
     graph._fill_graph(ax)
+    graph.djistra_shortest_path(ax)
+    plt.title(f"Map (Axis are in pixels. 1 inch = {RESOLUTION} pixels)")
     graph.display(ax)
     plt.show()
