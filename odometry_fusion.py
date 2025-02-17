@@ -23,6 +23,9 @@ plink.connect()
 
 map = construct_map(True, 4) #construct map for easy obstacles
 goalX, goalY = (djistra_shortest_path(map, None))[-1] #get last coords in List??
+
+
+#___________INITIALIZATIONS__________________________
 at_goal = False #are we at end goal
 d_t = 0.01
 diameter = 2.2 #inches
@@ -65,6 +68,8 @@ filtered_ay = ay
 accel_theta = math.atan2(ay, ax)
 gyro_theta = gz
 filtered_gz = gz
+#_________________________________________________________________
+
 
 def runge_kutta_step(x, y, theta, v, omega, dt):
     """Performs a single step of the Runge-Kutta method for odometry."""
@@ -102,7 +107,7 @@ def odometry_fusion(ax, ay, gz, accel_v_x, accel_v_y, accel_p_x, accel_p_y, gyro
     v_forward = (encoder_velocity_left + encorder_velocity_right) / 2
     encoder_robot_w = (encoder_velocity_left - encorder_velocity_right) / wheelbase
     encoder_x, encoder_y, encoder_theta = runge_kutta_step(encoder_x, encoder_y, encoder_theta, v_forward, encoder_robot_w, d_t)
-    encoder_theta = (encoder_theta + math.pi) % (2*math.pi) - math.pi
+    encoder_theta = (encoder_theta + math.pi) % (2*math.pi) - math.pi #RIGHT NOW NOT USING
 
     #accelerometer odometry
     accel_v_x += (filtered_ax * d_t) #integrate accel to get velocity
@@ -147,7 +152,7 @@ while not at_goal:
         at_goal = True
 
     #d_t = time.time() - start_time #dynamically adjust d_t WE CAN CHANGE THIS
-    print(f"X: {'%.4f' % current_x}, Y: {'%.4f' % current_y}, 0: {'%.4f' % current_angle}")
+    print(f"X: {'%.3f' % current_x}, Y: {'%.3f' % current_y}, 0: {'%.3f' % current_angle}")
     time.sleep(d_t)
 
 print(f"X: {'%.4f' % current_x}, Y: {'%.4f' % current_y}")
