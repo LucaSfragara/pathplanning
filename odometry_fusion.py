@@ -2,6 +2,8 @@ import time
 from motorgo import BrakeMode, ControlMode, Plink
 import math
 import numpy as np
+from construct_graph import djistra_shortest_path
+from construct_map import construct_map
 
 
 plink = Plink()
@@ -19,6 +21,9 @@ plink.connect()
 # - 3-axis accelerometer data in m/s^2 (linear acceleration)
 # - 3-axis gyroscope data in rad/s (angular velocity)
 
+map = construct_map(True, 4) #construct map for easy obstacles
+goalX, goalY = (djistra_shortest_path(map, None))[-1] #get last coords in List??
+at_goal = False #are we at end goal
 d_t = 0.01
 diameter = 2.2 #inches
 wheelbase = 6.1875 #inches
@@ -28,7 +33,9 @@ M = 0.8 #x-position filter constant
 N = 0.8 #y-position filter constant
 alpha = 0.1 #low pass filter constant
 beta = 0.1 #low pass filter constant for gyro
+speed = 4
 
+current_x, current_y = 0
 #initialize encoder odometry values
 encoder_velocity_left = 0
 encorder_velocity_right = 0
@@ -39,12 +46,10 @@ encoder_y = 0
 encoder_theta = 0
 
 #initialize accelerometer odometry values
-accel_velocity_x = 0
-accel_velocity_y = 0
-accel_position_x = 0
-accel_position_y = 0
-filtered_ax = 0
-filtered_ay = 0
+accel_v_x = 0 
+accel_v_y = speed #initial velocity command MAYBE CHANGE
+accel_p_x = 0 #CHANGE BASED ON TAS
+accel_p_y = 0 #CHANGE BASED ON TAS
 
 ax = imu.accel[0] #order is x, y, z (left-right on our robot)
 ay = imu.accel[1] #order is x, y, z (straight and behind on our robot)
@@ -53,6 +58,9 @@ az = imu.accel[2] #order is x, y, z (DONT NEED)
 gx = imu.gyro[0] #order is x, y, z (DONT NEED)
 gy = imu.gyro[1] #order is x, y, z (DONT NEED)
 gz = imu.gyro[2] #order is x, y, z (WE ONLY NEED gz)
+
+filtered_ax = ax
+filtered_ay = ay
 
 accel_theta = math.atan2(ay, ax)
 gyro_theta = gz
@@ -82,19 +90,8 @@ def runge_kutta_step(x, y, theta, v, omega, dt):
 
     return x_new, y_new, theta_new
 
-run_time = 0
-program_time = time.time()
-while True:
-    #start_time = time.time()
-    run_time = time.time() - program_time
 
-    left_motor.velocity_command = 10
-    right_motor.velocity_command = -10
-    #get sensor readings
-    ax = imu.accel[0] 
-    ay = imu.accel[1] 
-    gz = imu.gyro[2] 
-    
+def odometry_fusion(ax, ay, gz, accel_v_x, accel_v_y, accel_p_x, accel_p_y, gyro_theta):
     #apply low pass filter to ax, ay to filter out noise
     filtered_ax = alpha * ax + (1 - alpha) * filtered_ax
     filtered_ay = alpha * ay + (1 - alpha) * filtered_ay
@@ -108,10 +105,10 @@ while True:
     encoder_theta = (encoder_theta + math.pi) % (2*math.pi) - math.pi
 
     #accelerometer odometry
-    accel_velocity_x += (filtered_ax * d_t) #integrate accel to get velocity
-    accel_velocity_y += (filtered_ay * d_t) #same thing
-    accel_position_x += (accel_velocity_x * d_t) #integrate velocity to get position
-    accel_position_y += (accel_velocity_y * d_t) #integrate velocity to get position
+    accel_v_x += (filtered_ax * d_t) #integrate accel to get velocity
+    accel_v_y += (filtered_ay * d_t) #same thing
+    accel_p_x += (accel_v_x * d_t) #integrate velocity to get position
+    accel_p_y += (accel_v_y * d_t) #integrate velocity to get position
     accel_theta = math.radians(math.atan2(ay, ax)) #get theta in radians NOT VERY ACCURATE
 
     #gyro odometry values
@@ -122,10 +119,36 @@ while True:
     #complimentary filter for gyro, accel angle, and then encoder position and accel position
     current_angle = K * (gyro_theta) + (1 - K) * (accel_theta) 
     current_angle = (current_angle + math.pi) % (2 * math.pi) - math.pi
-    current_x = M * (encoder_x) + (1-M) * (accel_position_x)
-    current_y = N * (encoder_y) + (1-M) * (accel_position_y)
+    current_x = M * (encoder_x) + (1-M) * (accel_p_x)
+    current_y = N * (encoder_y) + (1-M) * (accel_p_y)
+    return [(current_x, current_y), current_angle, (accel_v_x, accel_v_y), (accel_p_x, accel_p_y), gyro_theta]
+
+
+while not at_goal:
+    left_motor.velocity_command = speed
+    right_motor.velocity_command = -speed
+    
+    #get sensor readings
+    ax = imu.accel[0] 
+    ay = imu.accel[1] 
+    gz = imu.gyro[2] 
+    
+    #get curr x and curr y, vx, vy, px, py, gyro theta
+    odo_values = odometry_fusion(ax, ay, gz, accel_v_x, accel_v_y, accel_p_x, accel_p_y, gyro_theta)
+    current_X, current_y = odo_values[0]
+    current_angle = odo_values[1]
+    accel_v_x, accel_v_y = odo_values[2]
+    accel_p_x, accel_p_y = odo_values[3]
+    gyro_theta = odo_values[4]
+
+
+    #if at goal, stop looping
+    if current_x == goalX and current_y == goalY:
+        at_goal = True
 
     #d_t = time.time() - start_time #dynamically adjust d_t WE CAN CHANGE THIS
-    print(f"X {current_x}, Y {current_y}")
+    print(f"X: {'%.4f' % current_x}, Y: {'%.4f' % current_y}, 0: {'%.4f' % current_angle}")
     time.sleep(d_t)
+
+print(f"X: {'%.4f' % current_x}, Y: {'%.4f' % current_y}")
 
