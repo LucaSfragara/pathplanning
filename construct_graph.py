@@ -92,7 +92,7 @@ class VisibilityGraph:
     def djistra_shortest_path(self, ax = None) -> Tuple[List, float]:
         
         """
-        Returns a list containing the hortest path between the START and END NODE and the corresponding total distance
+        Returns a list containing the shortest path between the START and END NODE and the corresponding total distance
         Parameters:
         - ax: (matplotlib.pyplot ax) provide for plotting shortest path
         """
