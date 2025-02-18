@@ -5,6 +5,7 @@ from construct_map import construct_map
 import itertools
 import heapq
 from typing import List, Tuple
+import math
 
 #List of (x, y) coordinates
 OBSTACLE_COORDINATES_EASY = [
@@ -33,16 +34,45 @@ OBSTACLE_COORDINATES_EASY = [
     [(38, 42), (38, 36)],  # Left
 ]
 
+
+OBSTACLE_COORDINATES_HARD = [
+    # Obstacle 1
+    [(44, 4), (44 + 18/math.sqrt(2), 4 + 18/math.sqrt(2))],  # BR
+    [(44 + 18/math.sqrt(2), 4 + 18/math.sqrt(2)), (44 + 18/math.sqrt(2) - 6/math.sqrt(2), 4 + 18/math.sqrt(2) + 6/math.sqrt(2))],  # TR
+    [(44, 4), (44 - 6/math.sqrt(2), 4 + 6/math.sqrt(2))],  # LB
+    [(44 - 6/math.sqrt(2), 4 + 6/math.sqrt(2)), (44 - 6/math.sqrt(2) + 18/math.sqrt(2), 4 + 6/math.sqrt(2) + 18/math.sqrt(2))],  # LT
+
+    # Obstacle 2
+    [(23, 19), (23 + 10.25, 19)],  # Bottom
+    [(23 + 10.25, 19), (23 + 10.25, 19 + 9)],  # Right
+    [(23 + 10.25, 19 + 9), (23, 19 + 9)],  # Top
+    [(23, 19 + 9), (23, 19)],  # Left
+
+    # Obstacle 3
+    [(6, 34.5), (6 + 6, 34.5)],  # Bottom
+    [(6 + 6, 34.5), (6 + 6, 34.5 + 6)],  # Right
+    [(6 + 6, 34.5 + 6), (6, 34.5 + 6)],  # Top
+    [(6, 34.5 + 6), (6, 34.5)],  # Left
+
+    # Obstacle 4
+    [(40, 50), (40 + 18/math.sqrt(2), 50 - 18/math.sqrt(2))],  # TR
+    [(40 + 18/math.sqrt(2), 50 - 18/math.sqrt(2)), (40 + 18/math.sqrt(2) - 6/math.sqrt(2), 50 - 18/math.sqrt(2) - 6/math.sqrt(2))],  # RB
+    [(40, 50), (40 - 6/math.sqrt(2), 50 - 6/math.sqrt(2))],  # LT
+    [(40 - 6/math.sqrt(2), 50 - 6/math.sqrt(2)), (40 - 6/math.sqrt(2) + 18/math.sqrt(2), 50 - 6/math.sqrt(2) - 18/math.sqrt(2))],  # LB
+]
+
+
 class VisibilityGraph:
     
     
-    def __init__(self, map: np.array, obstacle_vertexes: list, start_point: tuple, end_point: tuple, resolution: int):
+    def __init__(self, map: np.array, obstacle_vertexes: list, start_point: tuple, end_point: tuple, resolution: int, ax):
         
         self.map = map #(H, W, C), where C is False if free space and X and True if Obstacle
         self.h, self.w, _ = map.shape
         self.resolution = resolution
         self.start = tuple(x*resolution for x in start_point)
         self.end = tuple(x*resolution for x in end_point)
+        self.ax = ax
         
         self.flattened_vertexes = np.array(list(itertools.chain(*obstacle_vertexes)), dtype = int)
         additional_points =  np.array([start_point, end_point])
@@ -56,6 +86,8 @@ class VisibilityGraph:
         self.n_vertexes = len(obstacle_vertexes) 
         #self.graph = np.full((len(self.n_vertexes) +2, len(self.n_vertexes) +2),np.inf) #adjacency matrix all set to infinity (no connection between vertices)
         self.graph = {} #dictionary holding nodes (as keys) and all respective connected nodes. {<SOURCE>: [(<SINK>, <DISTANCE>)]}
+        
+        self._fill_graph(ax)
         
     def djistra_shortest_path(self, ax = None) -> Tuple[List, float]:
         
@@ -231,9 +263,8 @@ if __name__ == "__main__":
     START = (10,10) #in inches
     END = (60,50) #in inches
     
-    map = construct_map(isEasy=True, resolution=RESOLUTION)
-    graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, RESOLUTION)
-    graph._fill_graph(ax)
+    map = construct_map(isEasy=False, resolution=RESOLUTION)
+    graph = VisibilityGraph(map, OBSTACLE_COORDINATES_HARD, START, END, RESOLUTION, ax)
     graph.djistra_shortest_path(ax)
     plt.title(f"Map (Axis are in pixels. 1 inch = {RESOLUTION} pixels)")
     graph.display(ax)

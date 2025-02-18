@@ -10,6 +10,7 @@ import math
 import numpy
 import matplotlib.pyplot as plt
 
+
 """
 #! IT IS HIGHLY RECOMMENDED YOU EDIT THIS FILE TO IMPLEMENT A CONFIGURATION SPACE
 #! HOW YOU DO THAT IS FULLY UP TO YOU! :D
@@ -93,10 +94,53 @@ class Obstacle:
 
         return inBounds
 
-def construct_obstacles(isEasy):
+
+def enlarge_obstacle(obstacle, robot_width):
+    """
+    Enlarges an obstacle by shifting its boundary lines outward.
+    
+    :param obstacle: Obstacle object containing four lines.
+    :param robot_width: Width of the robot.
+    :return: New enlarged obstacle as a list of Line objects.
+    """
+    inflation_margin = -robot_width / 2  # Half of robot width
+
+    def offset_line(line):
+        """Moves a line outward by the inflation margin."""
+        (x1, y1) = line.p1
+        (x2, y2) = line.p2
+
+        # Compute direction vector
+        dx = x2 - x1
+        dy = y2 - y1
+        length = math.sqrt(dx ** 2 + dy ** 2)
+
+        if length == 0:
+            return line  # Avoid zero-length lines
+
+        # Compute unit perpendicular vector
+        perp_x = -dy / length
+        perp_y = dx / length
+
+        # Move both points outward
+        x1_new = x1 + inflation_margin * perp_x
+        y1_new = y1 + inflation_margin * perp_y
+        x2_new = x2 + inflation_margin * perp_x
+        y2_new = y2 + inflation_margin * perp_y
+
+        return Line((x1_new, y1_new), (x2_new, y2_new), line.boundType)
+
+    # Create a new enlarged obstacle with adjusted lines
+    enlarged_lines = [offset_line(obstacle.l1), offset_line(obstacle.l2), 
+                      offset_line(obstacle.l3), offset_line(obstacle.l4)]
+    
+    return Obstacle(*enlarged_lines)
+
+
+def construct_obstacles(isEasy, enlarge = False, robot_width = None):
     # construct obstacles
     # Remeber that points are (X, Y)
-    
+
     easyObstacles = [
         Obstacle(
             Line((8, 12), (14, 12), "B"),
@@ -158,6 +202,15 @@ def construct_obstacles(isEasy):
         obstacles = easyObstacles
     else:
         obstacles = hardObstacles # or hardObstacles
+    
+    if enlarge: 
+        obstacles_enlarged = []
+        for obstacle in obstacles:
+            obstacle_enlarged = enlarge_obstacle(obstacle=obstacle, robot_width = robot_width)  
+            obstacles_enlarged.append(obstacle_enlarged)
+            
+        obstacles = obstacles_enlarged
+        
     return obstacles #array of obstacles
 
 # given a list of obstacles and a coordinate point,
@@ -168,9 +221,10 @@ def check_obstacles(obstacles, x, y):
             return True
     return False
 
-def construct_map(isEasy, resolution):
 
-    obstacles = construct_obstacles(isEasy)
+def construct_map(isEasy, resolution, enlarge: bool, robot_width = None):
+
+    obstacles = construct_obstacles(isEasy, enlarge=enlarge, robot_width=robot_width)
 
     # Discritize points and run through them:
 
@@ -200,6 +254,9 @@ def construct_map(isEasy, resolution):
     return img
 
 
+
+
+
 # NOTE: Values in img are indexed (Y, X, color)
 # this was to work with the plt functions,
 # that for some reason start with y values, then x values (blame plt, not me)
@@ -211,8 +268,8 @@ isEasy = True
 # (anything larger than 20 takes a while)
 
 if __name__ == "__main__":
-    resolution = 1
-    img = construct_map(isEasy, resolution)
+    resolution = 4
+    img = construct_map(isEasy, resolution, enlarge = True, robot_width=50)
 
     plt.imshow(img, cmap=plt.cm.gray, origin='lower')
     plt.show()
