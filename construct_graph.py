@@ -315,8 +315,8 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1)
     
     RESOLUTION = 4
-    START = (10,50) #in inches
-    END = (60,50) #in inches
+    START = (10,49) #in inches
+    END = (65,10) #in inches
     ROBOT_WIDTH = 10
     
     map = construct_map(isEasy=True, resolution=RESOLUTION,enlarge=True, robot_width=ROBOT_WIDTH)
