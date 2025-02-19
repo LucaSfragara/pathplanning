@@ -17,8 +17,8 @@ right_motor.set_velocity_pid_gains(6, 1.4, 0.1)
 plink.connect()
 
 vertices = [(10, 10), (15, 10), (15, 15)]
-currX, currY = 0, 0
-curr_angle = math.pi/2
+currX, currY = 0, 0 #UPDATE BASED ON TAS
+curr_angle = math.pi/2  #UPDATE BASED ON TAS
 
 for goalX, goalY in vertices:
 
