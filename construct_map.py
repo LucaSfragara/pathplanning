@@ -116,8 +116,7 @@ def enlarge_obstacle(obstacle, robot_width):
         length = math.sqrt(dx ** 2 + dy ** 2)
 
         if length == 0:
-            return line  # Avoid zero-length lines
-
+            return line
         # Compute unit perpendicular vector
         perp_x = -dy / length
         perp_y = dx / length
@@ -207,6 +206,7 @@ def construct_obstacles(isEasy, enlarge = False, robot_width = None):
         obstacles_enlarged = []
         for obstacle in obstacles:
             obstacle_enlarged = enlarge_obstacle(obstacle=obstacle, robot_width = robot_width)  
+            
             obstacles_enlarged.append(obstacle_enlarged)
             
         obstacles = obstacles_enlarged
@@ -244,17 +244,14 @@ def construct_map(isEasy, resolution, enlarge: bool, robot_width = None):
     
     # Discritized Image
     # numpy does y first, then x. #grey scale image
-    img = numpy.zeros((y_disc, x_disc, 3), dtype=numpy.uint8)
+    img = numpy.zeros((y_disc, x_disc,1), dtype=bool)
 
     for col in range(x_disc):
         for row in range(y_disc):
             hit = check_obstacles(obstacles, col/RESOLUTION, row/RESOLUTION)
-            img[row, col] = [hit * 255, 0, 0]
+            img[row, col] = hit
 
     return img
-
-
-
 
 
 # NOTE: Values in img are indexed (Y, X, color)
@@ -269,7 +266,7 @@ isEasy = True
 
 if __name__ == "__main__":
     resolution = 4
-    img = construct_map(isEasy, resolution, enlarge = True, robot_width=50)
+    img = construct_map(isEasy, resolution, enlarge = True, robot_width=5)
 
     plt.imshow(img, cmap=plt.cm.gray, origin='lower')
     plt.show()

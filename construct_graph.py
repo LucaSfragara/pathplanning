@@ -7,6 +7,9 @@ import heapq
 from typing import List, Tuple
 import math
 
+from skimage import measure, draw
+import cv2
+
 #List of (x, y) coordinates
 OBSTACLE_COORDINATES_EASY = [
     # Obstacle 1
@@ -65,7 +68,7 @@ OBSTACLE_COORDINATES_HARD = [
 class VisibilityGraph:
     
     
-    def __init__(self, map: np.array, obstacle_vertexes: list, start_point: tuple, end_point: tuple, resolution: int, ax):
+    def __init__(self, map: np.array, obstacle_vertexes: list, start_point: tuple, end_point: tuple, resolution: int, ax, robot_width):
         
         self.map = map #(H, W, C), where C is False if free space and X and True if Obstacle
         self.h, self.w, _ = map.shape
@@ -74,17 +77,27 @@ class VisibilityGraph:
         self.end = tuple(x*resolution for x in end_point)
         self.ax = ax
         
-        self.flattened_vertexes = np.array(list(itertools.chain(*obstacle_vertexes)), dtype = int)
-        additional_points =  np.array([start_point, end_point])
+        #print(obstacle_vertexes)
+        #print("________")
+        
+        if robot_width is not None: 
+            obstacle_vertexes_enlarged = self._find_vertixes(ax)
+            self.flattened_vertexes =  np.vstack(obstacle_vertexes_enlarged, dtype = int)
+            self.vertexes = obstacle_vertexes_enlarged
+        else: 
+            self.flattened_vertexes = np.array(list(itertools.chain(*obstacle_vertexes)), dtype = int)
+            self.vertexes = obstacle_vertexes
+
+            
+        additional_points =  np.array([start_point, end_point]) * resolution
         
         self.flattened_vertexes = np.vstack([additional_points, self.flattened_vertexes])
         
         #scale vertexes: 
-        self.flattened_vertexes = self.flattened_vertexes * resolution
+        self.flattened_vertexes = self.flattened_vertexes 
         
-        self.vertexes = obstacle_vertexes
         self.n_vertexes = len(obstacle_vertexes) 
-        #self.graph = np.full((len(self.n_vertexes) +2, len(self.n_vertexes) +2),np.inf) #adjacency matrix all set to infinity (no connection between vertices)
+
         self.graph = {} #dictionary holding nodes (as keys) and all respective connected nodes. {<SOURCE>: [(<SINK>, <DISTANCE>)]}
         
         self._fill_graph(ax)
@@ -139,7 +152,47 @@ class VisibilityGraph:
                 pass 
         return path, distances[self.end]
         
+    def _find_vertixes(self, ax = None):
         
+        
+        self.map_squeeze = np.squeeze(self.map, axis=-1)
+        contours = measure.find_contours(self.map_squeeze, level=0.5)
+        
+        polygons = []
+    
+        for contour in contours:
+            # OpenCV expects points in (x, y) order (i.e., (col, row)), so flip the coordinates.
+            contour_xy = np.fliplr(contour).astype(np.float32)
+            
+            # Reshape to the format required by cv2.approxPolyDP: (N, 1, 2)
+            contour_xy = contour_xy.reshape((-1, 1, 2))
+            
+            # Approximate the contour to a polygon with the specified tolerance.
+            approx = cv2.approxPolyDP(contour_xy, 2, True)
+            
+            # Reshape to a simple list of points and flip back to (row, col) order.
+            approx = approx.reshape(-1, 2)
+            approx_rc = np.fliplr(approx).astype(int)
+            
+            # Convert the array of points to a list of tuples.
+            polygon = [tuple(pt) for pt in approx_rc]
+            polygon = np.array(polygon)
+        
+            
+            for vertex in polygon: 
+                    circle = patches.Circle(vertex[::-1], 0.3*self.resolution ,edgecolor = "r", linewidth = 0.3*self.resolution, facecolor = "white")
+                    ax.add_patch(circle)
+                    
+                    if vertex[::-1][0] < 0 or vertex[::-1][0] > self.w-5 or vertex[::-1][1] < 0 or vertex[::-1][1] > self.h-5:
+                        print(f"vertex {vertex[::-1]} is out of bound")
+                    else: 
+                        polygons.append(vertex[::-1])
+            
+            
+        print(polygons)
+        return polygons
+
+    
     def _fill_graph(self, ax = None):
         
         #compute cartesian product to get all possible combinations of vertices
@@ -221,7 +274,7 @@ class VisibilityGraph:
                 circle = patches.Circle((x1, y1), 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "none")
                 ax.add_patch(circle)
             
-            if np.any(self.map[y1, x1]>0): #return False if there is an obstacle
+            if np.all(self.map[y1-1:y1+2, x1-1:x1+2]): #return False if there is an obstacle
                 return False
             
         return True
@@ -231,12 +284,14 @@ class VisibilityGraph:
         return self.map
     
     def display(self, ax) -> None:
+
+        #Plot start and end
+        circle_start = patches.Circle(self.start, 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "white")
+        ax.add_patch(circle_start)
         
-        for vertex in self.flattened_vertexes:
-     
-            circle = patches.Circle(vertex, 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "white")
-            ax.add_patch(circle)
-            
+        circle_end = patches.Circle(self.end, 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "white")
+        ax.add_patch(circle_end)
+        
         ax.imshow(self.map)
        
         
@@ -260,12 +315,14 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1)
     
     RESOLUTION = 4
-    START = (10,10) #in inches
+    START = (10,50) #in inches
     END = (60,50) #in inches
+    ROBOT_WIDTH = 10
     
-    map = construct_map(isEasy=False, resolution=RESOLUTION)
-    graph = VisibilityGraph(map, OBSTACLE_COORDINATES_HARD, START, END, RESOLUTION, ax)
+    map = construct_map(isEasy=True, resolution=RESOLUTION,enlarge=True, robot_width=ROBOT_WIDTH)
+    graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, RESOLUTION, ax, robot_width=ROBOT_WIDTH)
     graph.djistra_shortest_path(ax)
     plt.title(f"Map (Axis are in pixels. 1 inch = {RESOLUTION} pixels)")
     graph.display(ax)
     plt.show()
+    
