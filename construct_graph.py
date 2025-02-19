@@ -183,7 +183,10 @@ class VisibilityGraph:
                     circle = patches.Circle(vertex[::-1], 0.3*self.resolution ,edgecolor = "r", linewidth = 0.3*self.resolution, facecolor = "white")
                     ax.add_patch(circle)
                     
-                    polygons.append(vertex[::-1])
+                    if vertex[::-1][0] < 0 or vertex[::-1][0] > self.w-5 or vertex[::-1][1] < 0 or vertex[::-1][1] > self.h-5:
+                        print(f"vertex {vertex[::-1]} is out of bound")
+                    else: 
+                        polygons.append(vertex[::-1])
             
             
         print(polygons)
@@ -314,7 +317,7 @@ if __name__ == "__main__":
     RESOLUTION = 4
     START = (10,50) #in inches
     END = (60,50) #in inches
-    ROBOT_WIDTH = 14
+    ROBOT_WIDTH = 10
     
     map = construct_map(isEasy=True, resolution=RESOLUTION,enlarge=True, robot_width=ROBOT_WIDTH)
     graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, RESOLUTION, ax, robot_width=ROBOT_WIDTH)
