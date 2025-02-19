@@ -45,11 +45,12 @@ right_motor.velocity_command = 0
 
 plink.connect()
 right_constant = 1 #right wheel is weaker
-wheelbase = 4.2 #inches #decrease if undershoot, increase
-#prev 4.110
+wheelbase = 3.7 #inches #decrease if undershoot
+#prev 3.8
 d_t = 0.03
 pause = 0.5
-diameter = 1.765 #if undershoot, increase 
+diameter = 1.65 #if undershoot, increase 
+#Prev 1.8
 straight_line_velocity = 5
 turn_velocity = 3
 
@@ -109,6 +110,8 @@ def nav_straight(x_curr, y_curr, theta_curr, x_goal, y_goal): #straight_line vel
     
     time.sleep(d_t)
 
+    t_start = time.time()
+
 
     while new_distance <= old_distance+0.0: #may cause overshooting
         #left_motor.velocity_command = -straight_line_velocity
@@ -146,12 +149,13 @@ def nav_straight(x_curr, y_curr, theta_curr, x_goal, y_goal): #straight_line vel
         old_distance = new_distance
         new_distance = math.sqrt((x_goal - x_curr)**2 + (y_goal - y_curr)**2)
         
+
+        if time.time() - t_start > 30:
+            break
         #go sleepy times
         #print(x_curr, y_curr, theta_curr)
         time.sleep(d_t)
 
-    left_motor.velocity_command = 0
-    right_motor.velocity_command = 0
 
     t = time.time()
     while time.time()-t < pause:
@@ -228,7 +232,8 @@ def turn_in_place_PID(x_curr, y_curr, theta_curr, theta_goal):
 def turn_in_place_dumb(x_curr, y_curr, theta_curr, x_goal, y_goal): #might have a problem when you turn from positive to negative
     """takes current theta and turns to goal theta (both in rad)
         outputs resultant x, y, and theta"""
-    
+    #t_start = time.time()
+
     theta_threshold = math.radians(2.4)
     
     #calculate d_theta
@@ -247,7 +252,7 @@ def turn_in_place_dumb(x_curr, y_curr, theta_curr, x_goal, y_goal): #might have 
     direction = math.copysign(1, d_theta)
 
     #account for threshold
-    d_theta = d_theta-direction*theta_threshold
+    #d_theta = d_theta-direction*theta_threshold
     
     #are we done turning
     done = False
@@ -281,11 +286,10 @@ def turn_in_place_dumb(x_curr, y_curr, theta_curr, x_goal, y_goal): #might have 
         elif curr_theta_turned <= d_theta:
             done = True
 
+        # if time.time() - t_start > 30:
+        #     break
         #sleepy time
         time.sleep(d_t)
-    
-    left_motor.velocity_command = 0
-    right_motor.velocity_command = 0
 
     t = time.time()
     while time.time()-t < pause:
@@ -333,16 +337,38 @@ def tune_wheelbase():
 
         print(math.degrees(theta_curr))
 
-x, y, theta = nav_straight(0, 0, math.pi/2, 0, 12)
+# x, y, theta = nav_straight(0, 0, math.pi/2, 0, 12)
 
-print(x, y, math.degrees(theta))
+# print(x, y, math.degrees(theta))
 
-x, y, theta = turn_in_place_dumb(x, y, theta, 12, 12)
+# x, y, theta = turn_in_place_dumb(x, y, theta, 12, 12)
 
-print(x, y, math.degrees(theta))
+# print(x, y, math.degrees(theta))
 
-x, y, theta = nav_straight(x, y, theta, 12, 12)
+# x, y, theta = nav_straight(x, y, theta, 12, 12)
 
-#x, y, theta = turn_in_place_dumb(0, 0, 0, 0, 12)
+#x, y, theta = turn_in_place_dumb(0.067, 12.248, math.radians(-1.49), 12, 12)
 
-print(x, y, math.degrees(theta))
+if __name__ == '__main__': 
+
+
+    vertices = [(45/4, 156/4), (115/4, 139/4), (132/4, 125/4), (65, 10)]
+    currX, currY = 10, 49
+    
+    #vertices = [(0, 0.1)]
+    #currX, currY = 0, 0
+    curr_angle = math.pi/2
+
+
+    for goalX, goalY in vertices:
+
+
+        currX, currY, curr_angle = turn_in_place_dumb(currX, currY, curr_angle, goalX, goalY)
+        print(currX, currY, math.degrees(curr_angle))
+        currX, currY, curr_angle = nav_straight(currX, currY, curr_angle, goalX, goalY)
+        print(currX, currY, math.degrees(curr_angle))
+        """x, y, theta = turn_in_place_dumb(0, 0, math.pi/2, 12, 0)
+
+        print(x, y, math.degrees(theta))"""
+
+plink.shutdown()
