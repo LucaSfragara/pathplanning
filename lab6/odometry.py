@@ -34,11 +34,20 @@ class Odometry:
 
         self.x_curr, self.y_curr, self.theta_curr = x_curr, y_curr, theta_curr
 
-    def get_sector(self):
-        return self.theta_curr
+    def get_phi(self):
+        """returns clockwise angular displacement from negative x axis in degrees from 0 to 360"""
+
+        if self.x_curr < 0 and self.y_curr > 0:
+            return math.degrees(-math.atan(self.y_curr/self.x_curr))
+
+        elif self.x_curr < 0 and self.y_curr < 0:
+            return 360 - math.degrees(math.atan(self.y_curr/self.x_curr))
+
+        else:
+            return 180 - math.degrees(math.atan(self.y_curr/self.x_curr))
     
-    def print_sector(self):
-        print(self.theta_curr)
+    def print_phi(self):
+        print(self.get_phi())
 
     def update_and_print(self):
         self.update()

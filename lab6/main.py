@@ -33,9 +33,9 @@ wheel_base = 10.5 #if undershoot, decrease
 wheel_diameter = 1.215 #if undershoot, increase 
 #prev 1.2
 
-x_curr = 0 
+x_curr =  -10.75#center of wheel base radius from center when you start
 y_curr = 0
-theta_curr = 0
+theta_curr = math.pi/2
 
 #miscellanious constants
 d_t = 0.03
@@ -83,7 +83,8 @@ while time.time() - t < 100:
     #right_motor.velocity_command = 5
     line_follower.update_velocities(light_sensor.lux)
     #print(light_sensor.lux)
-    odometry.update_and_print()
+    odometry.update()
+    odometry.print_phi()
     time.sleep(d_t)
 
 """
