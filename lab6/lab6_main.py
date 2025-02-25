@@ -7,16 +7,25 @@ import seaborn as sns
 
 class Localization: 
     
-    def __init__(self, regions_per_sector:int, block_threshold: float):
+    def __init__(self, regions_per_sector:int, block_threshold_lower: float, block_threshold_upper: float, blocks_map: list):
         
         self.regions_per_sector = regions_per_sector
         self.N_sectors = 16
         self.total_regions = regions_per_sector * self.N_sectors
-        self.block_threshold = block_threshold
         self.angles_per_region = 360 / self.total_regions
 
         self.probabilities = np.full(self.total_regions, 1.0 / self.total_regions)  # Initialize the probability map (i.e. prior belief) with equal probabilities
-        self.previous_region = 0
+        self.current_region = 0
+        
+        #closest block is around 8, farthest around 28, maybe adjust this
+        self.block_threshold_lower = 5
+        self.block_threshold_upper = 35
+        
+        #repeat each element of the list 4 times mantaining the order
+        self.blocks_map = []
+        for el in self.map:
+            self.blocks_map.extend([el] * 4)
+        
         
     def motion_model(self, current_angle, sigma_region):
         
@@ -30,9 +39,9 @@ class Localization:
         #shift probability map by the motion model
         
         current_region = self._get_region_from_angle(current_angle)
-        region_shift = current_region - self.previous_region
+        region_shift = current_region - self.current_region
         
-        self.previous_region = current_region
+        self.current_region = current_region
 
         region_centers = np.arange(0, self.total_regions) 
 
@@ -72,52 +81,57 @@ class Localization:
         return int(region / self.regions_per_sector)
     
 
-    def sensor_model(self, distance_readings, z, sigma = 0.5, d_expected = 1):     
-        
+    def sensor_model(self, distance_reading, d_expected, sigma=0.5):     
         """
-        Returns P(z | x) for a  sensor model.
+        Returns P(z | x) for a sensor model with Gaussian noise.
         Params: 
         - distance_readings: the distance reading from the sensor
-        - sigma: the standard deviation of the sensor
-        - d_expected: the expected distance
+        - sigma: the standard deviation of the sensor noise
+        - d_expected: the expected distance for block detection
         """
-           
-        coeff = 1.0 / (math.sqrt(2.0 * math.pi) * sigma)
-        exponent = -0.5 * ((z - d_expected) ** 2) / (sigma ** 2)
-        return coeff * math.exp(exponent)
+        block_detected = False   
+        
+        if distance_reading < self.block_threshold_upper and distance_reading > self.block_threshold_lower:
+            block_detected = True
+            
+        # Calculate probability using Gaussian distribution
+        if block_detected:
+            # If block detected, calculate probability based on how close to expected
+            prob_block = stats.norm.pdf(distance_reading, d_expected, sigma)
+            return prob_block if self.blocks_map[self.current_region] == 1 else (1 - prob_block)
+        else:
+            # If no block detected, inverse probability
+            prob_no_block = 1 - stats.norm.pdf(distance_reading, d_expected, sigma)
+            return prob_no_block if self.blocks_map[self.current_region] == 0 else (1 - prob_no_block)
     
-    
-    def bayesian_filter_update(self, bel_prev, distance_reading):
+    def bayesian_filter_update(self, distance_reading, sigma=0.5):
+        """
+        Updated Bayesian filter incorporating sensor noise
+        """
+        # Prediction step (remains unchanged)
+        bel_bar = self.probabilities  # Using current probabilities as prior
         
-        #prediction (Model Update). We shift the probability map by the motion model
-        
-        
-        bel_bar = np.zeros((self.N))
-        for x_prime in range(self.N):
-            total = 0
-            for x in range(self.N):
-                total += self.motion_model(x_prime, x) * bel_prev[x]
+        # Update step with sensor model
+        bel = np.zeros(self.total_regions)
+        for x_prime in range(self.total_regions):
+            # Calculate sensor probability for each region
+            sensor_prob = self.sensor_model(distance_reading, sigma)
+            bel[x_prime] = sensor_prob * bel_bar[x_prime]
             
-                 
-        #Update the probability map based on the sensor model
-        
-        bel = np.zeros((self.N))
-        for x_prime in range(self.N):
-            bel[x_prime] = self.sensor_model(distance_reading) * bel_bar[x_prime]
-            
-            
-        #normalize the new probability map
+        # Normalize
         total_sum = np.sum(bel)
-        if total_sum != 0:
+        if total_sum > 0:
             bel = bel / total_sum
         
+        self.probabilities = bel
         return bel
-    
+
 if __name__ == "__main__":
     
-    #blocks_map = {1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+    blocks_map = {1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
     
-    loc = Localization(4, 0.5) 
+    
+    #loc = Localization(4, 0.5, block_threshold_upper=) 
     
     #region = loc._get_region_from_angle(360)
     #sector = loc._get_sector_from_region(region)
@@ -136,5 +150,5 @@ if __name__ == "__main__":
     plt.xticks(np.linspace(0, loc.total_regions,loc.total_regions // 4 ))
     
     plt.show()
-    
-    
+
+
