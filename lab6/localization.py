@@ -1,9 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import math
 import scipy.stats as stats
-import seaborn as sns
-#from tof import read_data
+#import seaborn as sns
+from tof import read_data
 import time
 
 class Localization: 
@@ -129,6 +129,53 @@ class Localization:
         
         self.probabilities = bel
         return bel
+    
+    def integrated_update(self, distance_reading, current_angle, sigma_region=5, sigma_sensor=2, d_expected=23):
+        """
+        Integrated update that first performs the motion update and then incorporates
+        the sensor measurement.
+        
+        Parameters:
+          - current_angle: the new angle (from e.g. an encoder)
+          - distance_reading: the measured distance from the sensor
+          - sigma_region: standard deviation for the motion (region) noise
+          - sigma_sensor: standard deviation for the sensor noise
+          - d_expected: the expected distance when a block is present
+        """
+        # predicted probabilities based on motion update
+        predicted_bel = self.motion_model(current_angle, sigma_region)
+        
+        # initialize array for sensor update
+        updated_bel = np.zeros_like(predicted_bel)
+        
+        # check if block detected
+        block_detected = self.block_threshold_lower < distance_reading < self.block_threshold_upper
+        
+        #if a block is detected, then regions expected to have a block (blocks_map == 1)
+        #should have a high likelihood, else, the likelihood is low.
+        for region in range(self.total_regions):
+            expected_block = self.blocks_map[region]
+            if block_detected:
+                # When a block is detected, use the CDF to see how close the reading is to d_expected.
+                prob = stats.norm.cdf(distance_reading, loc=d_expected, scale=sigma_sensor)
+                # If a block is expected, likelihood is higher when prob is high.
+                likelihood = prob if expected_block == 1 else (1 - prob)
+            else:
+                # When no block is detected, use the inverse probability.
+                prob = 1 - stats.norm.cdf(distance_reading, loc=d_expected, scale=sigma_sensor)
+                likelihood = prob if expected_block == 0 else (1 - prob)
+                
+            updated_bel[region] = predicted_bel[region] * likelihood
+        
+        #normalize
+        if updated_bel.sum() > 0:
+            updated_bel /= updated_bel.sum()
+        else:
+            # In case of a numerical error, revert to the predicted belief.
+            updated_bel = predicted_bel
+        
+        self.probabilities = updated_bel
+        return updated_bel
 
 if __name__ == "__main__":
     
@@ -145,14 +192,32 @@ if __name__ == "__main__":
     #for angle in range(0, 180):
         
     #    noisy_prob_map, gaussian_weights = loc.motion_model(current_angle=angle, sigma_region=5) #SD. in regions
-
+    start_time = time.time()
     while True:
-        
+        loop_time = time.time()-start_time()
+
         dist = read_data()
-        if dist > 1:
-    
-            print(loc.sensor_model(dist, 23, sigma = 2))
+        if dist > 1: #not a bad value
+
+            #integrated update combines motion update with sensor update, CHANGE CURRENT ANGLE
+            belief = loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23)
+            
+            #gets index of most probable region
+            most_probable_region = np.argmax(belief)
+            #get target angle of most likely region
+            target_angle = most_probable_region * loc.angles_per_region
+
+            #if we are adequately sure about best region and we've done at least 1 loop and were at the goal, STOP
+            if belief[most_probable_region] > 0.6 and loop_time > 30 and  most_probable_region == loc.current_region:
+                print(f"Probability {belief[most_probable_region]}")
+                break
+                
+            #print(loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23))
             time.sleep(0.1)
+
+
+
+
         #print(loc.sensor_model(dist, 23))
     #print(gaussian_weights)
     #sns.barplot(x = np.arange(0, loc.total_regions), y = noisy_prob_map)
