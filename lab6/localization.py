@@ -195,6 +195,7 @@ if __name__ == "__main__":
     start_time = time.time()
     while True:
         loop_time = time.time()-start_time()
+        
 
         dist = read_data()
         if dist > 1: #not a bad value
