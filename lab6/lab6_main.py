@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 import math
 import scipy.stats as stats
 import seaborn as sns
-
+#from tof import read_data
+import time
 
 class Localization: 
     
-    def __init__(self, regions_per_sector:int, block_threshold_lower: float, block_threshold_upper: float, blocks_map: list):
+    def __init__(self, regions_per_sector:int, block_threshold_upper: float, block_threshold_lower: float, blocks_map: list):
         
         self.regions_per_sector = regions_per_sector
         self.N_sectors = 16
@@ -19,7 +20,7 @@ class Localization:
         
         #closest block is around 8, farthest around 28, maybe adjust this
         self.block_threshold_lower = block_threshold_lower
-        self.block_threshold_upper = block_threshold_lower
+        self.block_threshold_upper = block_threshold_upper
         
         #repeat each element of the list 4 times mantaining the order
         self.blocks_map = []
@@ -81,7 +82,7 @@ class Localization:
         return int(region / self.regions_per_sector)
     
 
-    def sensor_model(self, distance_reading, d_expected, sigma=0.5):     
+    def sensor_model(self, distance_reading, d_expected, sigma):     
         """
         Returns P(z | x) for a sensor model with Gaussian noise.
         Params: 
@@ -90,7 +91,7 @@ class Localization:
         - d_expected: the expected distance for block detection
         """
         block_detected = False   
-        
+        print(distance_reading)
         if distance_reading < self.block_threshold_upper and distance_reading > self.block_threshold_lower:
             block_detected = True
             
@@ -99,12 +100,13 @@ class Localization:
             # If block detected, calculate probability based on how close to expected
             print("block detected")
             prob_block = stats.norm.cdf(distance_reading, d_expected, sigma)
-            return prob_block if self.blocks_map[self.current_region] == 1 else (1 - prob_block)
+            return prob_block if self.blocks_map[self.current_region] == 1 else (1 - prob_block), block_detected
         else:
             # If no block detected, inverse probability
             print("no block detected")
             prob_no_block = 1 - stats.norm.cdf(distance_reading, d_expected, sigma)
-            return prob_no_block if self.blocks_map[self.current_region] == 0 else (1 - prob_no_block)
+            print(prob_no_block)
+            return prob_no_block if self.blocks_map[self.current_region] == 0 else (1 - prob_no_block), block_detected
     
     def bayesian_filter_update(self, distance_reading, sigma=0.5):
         """
@@ -133,7 +135,7 @@ if __name__ == "__main__":
     blocks_map = [1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     
     
-    loc = Localization(4, 0.5, block_threshold_upper=35, block_threshold_lower=5) 
+    loc = Localization(4, block_threshold_upper=35, block_threshold_lower=5, blocks_map = blocks_map) 
     
     #region = loc._get_region_from_angle(360)
     #sector = loc._get_sector_from_region(region)
@@ -146,9 +148,12 @@ if __name__ == "__main__":
 
     while True:
         
-        distance_reading = float(input("Enter distance reading: "))
-        loc.bayesian_filter_update(distance_reading)
-        print(loc.probabilities)
+        dist = read_data()
+        if dist > 1:
+    
+            print(loc.sensor_model(dist, 23, sigma = 2))
+            time.sleep(0.1)
+        #print(loc.sensor_model(dist, 23))
     #print(gaussian_weights)
     #sns.barplot(x = np.arange(0, loc.total_regions), y = noisy_prob_map)
     
