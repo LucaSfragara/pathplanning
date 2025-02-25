@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     while True:
-        loop_time = time.time()-start_time()
+        loop_time = time.time()-start_time
         light_val = get_light()
 
         #line follow

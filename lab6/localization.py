@@ -143,7 +143,7 @@ class Localization:
           - d_expected: the expected distance when a block is present
         """
         # predicted probabilities based on motion update
-        predicted_bel = self.motion_model(current_angle, sigma_region)
+        predicted_bel, gaussian_weights = self.motion_model(current_angle, sigma_region)
         
         # initialize array for sensor update
         updated_bel = np.zeros_like(predicted_bel)
@@ -177,44 +177,43 @@ class Localization:
         self.probabilities = updated_bel
         return updated_bel
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    blocks_map = [1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+#     blocks_map = [1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     
     
-    loc = Localization(4, block_threshold_upper=35, block_threshold_lower=5, blocks_map = blocks_map) 
+#     loc = Localization(4, block_threshold_upper=35, block_threshold_lower=5, blocks_map = blocks_map) 
     
-    #region = loc._get_region_from_angle(360)
-    #sector = loc._get_sector_from_region(region)
+#     #region = loc._get_region_from_angle(360)
+#     #sector = loc._get_sector_from_region(region)
     
-    #print(f"region: {region}, sector: {sector}")
+#     #print(f"region: {region}, sector: {sector}")
     
-    #for angle in range(0, 180):
+#     #for angle in range(0, 180):
         
-    #    noisy_prob_map, gaussian_weights = loc.motion_model(current_angle=angle, sigma_region=5) #SD. in regions
-    start_time = time.time()
-    while True:
-        loop_time = time.time()-start_time()
-        
+#     #    noisy_prob_map, gaussian_weights = loc.motion_model(current_angle=angle, sigma_region=5) #SD. in regions
+#     start_time = time.time()
+#     while True:
+#         loop_time = time.time()-start_time()
 
-        dist = read_data()
-        if dist > 1: #not a bad value
+#         dist = read_data()
+#         if dist > 1: #not a bad value
 
-            #integrated update combines motion update with sensor update, CHANGE CURRENT ANGLE
-            belief = loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23)
+#             #integrated update combines motion update with sensor update, CHANGE CURRENT ANGLE
+#             belief = loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23)
             
-            #gets index of most probable region
-            most_probable_region = np.argmax(belief)
-            #get target angle of most likely region
-            target_angle = most_probable_region * loc.angles_per_region
+#             #gets index of most probable region
+#             most_probable_region = np.argmax(belief)
+#             #get target angle of most likely region
+#             target_angle = most_probable_region * loc.angles_per_region
 
-            #if we are adequately sure about best region and we've done at least 1 loop and were at the goal, STOP
-            if belief[most_probable_region] > 0.6 and loop_time > 30 and  most_probable_region == loc.current_region:
-                print(f"Probability {belief[most_probable_region]}")
-                break
+#             #if we are adequately sure about best region and we've done at least 1 loop and were at the goal, STOP
+#             if belief[most_probable_region] > 0.6 and loop_time > 30 and  most_probable_region == loc.current_region:
+#                 print(f"Probability {belief[most_probable_region]}")
+#                 break
                 
-            #print(loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23))
-            time.sleep(0.1)
+#             #print(loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23))
+#             time.sleep(0.1)
 
 
 
