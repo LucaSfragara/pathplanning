@@ -75,13 +75,18 @@ line_follower = Line_follower(left_motor, right_motor, line_following_kp, line_f
 #main loop
 if __name__ == "__main__":
     
-    blocks_map = [1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    blocks_map = [1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    #GOAL REGION: 6
     
 
     #initialize objects
     odometry = Odometry(left_motor, right_motor, wheel_base, wheel_diameter, d_t, x_curr, y_curr, theta_curr)
-    loc = Localization(4, block_threshold_upper=35, block_threshold_lower=5, blocks_map = blocks_map) 
+    loc = Localization(2, block_threshold_upper=35, block_threshold_lower=5, blocks_map = blocks_map, goal_region = 6) 
     line_follower = Line_follower(left_motor, right_motor, line_following_kp, line_following_ki, line_following_kd, motor_speed_ratio, light_sensor_distance_ratio, min_velocity, lower_threshold, upper_threshold, d_t)
+
+    #when high enough, go to goal
+    goal_probability_threshold = 0.6
+
 
     start_time = time.time()
     while True:
@@ -90,28 +95,40 @@ if __name__ == "__main__":
 
         #line follow
         line_follower.update_velocities(light_val)
-        #update odometry
+
+        #update odometry, get angle, get tof data
         odometry.update()
         dist = read_data()
+        current_angle = math.degrees(odometry.theta_curr) % 360
+
         if dist > 1: #not a bad value
 
             #integrated update combines motion update with sensor update, CHANGE CURRENT ANGLE
-            belief = loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23)
+            belief = loc.integrated_update(dist, current_angle, sigma_region=5, sigma_sensor=2, d_expected=23)
             
             #gets index of most probable region
             most_probable_region = np.argmax(belief)
+
             #get target angle of most likely region
             target_angle = most_probable_region * loc.angles_per_region
 
+            print(f"Probabilities: {belief}")#f"Current angle: {current_angle:.2f}°, "
+              #f"Most probable region: {most_probable_region}, "
+              
+            
+
             #if we are adequately sure about best region and we've done at least 1 loop and were at the goal, STOP
-            if belief[most_probable_region] > 0.6 and loop_time > 30 and  most_probable_region == loc.current_region:
-                print(f"Probability {belief[most_probable_region]}")
+            if belief[loc.goal_region] > goal_probability_threshold and loop_time > 30 and  loc.goal_region == loc.current_region:
+                print(f"Probability {belief[loc.current_region]}, Stopped at Region {loc.current_region}")
+                left_motor.velocity_command = 0
+                right_motor.velocity_command = 0
+                #STOP WHEELS
                 break
                 
             #print(loc.integrated_update(dist, current_angle=10, sigma_region=5, sigma_sensor=2, d_expected=23))
 
             #MIGHT NEED TO PLAY WITH SLEEP VALUE
-            time.sleep(0.05) 
+        time.sleep(0.05) 
 
 
 

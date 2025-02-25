@@ -49,20 +49,20 @@ class Line_follower:
         # MAKE SURE ALL THE NEFATIVES ARE RIGHT HERE
         #following outside edge
         if curr_light_val > upper_threshold: # turn left
-            print(f"Too much white: {curr_light_val} correction: {correction}\n")
+            #print(f"Too much white: {curr_light_val} correction: {correction}\n")
             left_motor.velocity_command = -ratio*base_speed + c_ratio*correction
             #print(f"left_motor velocity: {-ratio*base_speed - c_ratio*correction}")
             right_motor.velocity_command = base_speed + correction
             #print(f"right_motor velocity: {base_speed - correction}")
         
         elif curr_light_val < lower_threshold: #turn right
-            print(f"Too much black: {curr_light_val} correction: {correction}\n")
+            #print(f"Too much black: {curr_light_val} correction: {correction}\n")
             left_motor.velocity_command = -ratio*base_speed - c_ratio*correction
             #print(f"left_motor velocity: {-ratio*base_speed + c_ratio*correction}")
             right_motor.velocity_command = base_speed - correction
             #print(f"right_motor velocity: {base_speed + correction}")
         else: 
-            print(f"We're good at: {curr_light_val} correction: {correction}\n")
+            #print(f"We're good at: {curr_light_val} correction: {correction}\n")
             left_motor.velocity_command = -ratio*base_speed 
             right_motor.velocity_command = base_speed
         
