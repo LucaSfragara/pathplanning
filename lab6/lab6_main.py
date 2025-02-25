@@ -18,8 +18,8 @@ class Localization:
         self.current_region = 0
         
         #closest block is around 8, farthest around 28, maybe adjust this
-        self.block_threshold_lower = 5
-        self.block_threshold_upper = 35
+        self.block_threshold_lower = block_threshold_lower
+        self.block_threshold_upper = block_threshold_lower
         
         #repeat each element of the list 4 times mantaining the order
         self.blocks_map = []
@@ -97,11 +97,13 @@ class Localization:
         # Calculate probability using Gaussian distribution
         if block_detected:
             # If block detected, calculate probability based on how close to expected
-            prob_block = stats.norm.pdf(distance_reading, d_expected, sigma)
+            print("block detected")
+            prob_block = stats.norm.cdf(distance_reading, d_expected, sigma)
             return prob_block if self.blocks_map[self.current_region] == 1 else (1 - prob_block)
         else:
             # If no block detected, inverse probability
-            prob_no_block = 1 - stats.norm.pdf(distance_reading, d_expected, sigma)
+            print("no block detected")
+            prob_no_block = 1 - stats.norm.cdf(distance_reading, d_expected, sigma)
             return prob_no_block if self.blocks_map[self.current_region] == 0 else (1 - prob_no_block)
     
     def bayesian_filter_update(self, distance_reading, sigma=0.5):
@@ -131,24 +133,28 @@ if __name__ == "__main__":
     blocks_map = [1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     
     
-    #loc = Localization(4, 0.5, block_threshold_upper=) 
+    loc = Localization(4, 0.5, block_threshold_upper=35, block_threshold_lower=5) 
     
     #region = loc._get_region_from_angle(360)
     #sector = loc._get_sector_from_region(region)
     
     #print(f"region: {region}, sector: {sector}")
     
-    for angle in range(0, 180):
+    #for angle in range(0, 180):
         
-        noisy_prob_map, gaussian_weights = loc.motion_model(current_angle=angle, sigma_region=5) #SD. in regions
+    #    noisy_prob_map, gaussian_weights = loc.motion_model(current_angle=angle, sigma_region=5) #SD. in regions
 
-
+    while True:
+        
+        distance_reading = float(input("Enter distance reading: "))
+        loc.bayesian_filter_update(distance_reading)
+        print(loc.probabilities)
     #print(gaussian_weights)
-    sns.barplot(x = np.arange(0, loc.total_regions), y = noisy_prob_map)
+    #sns.barplot(x = np.arange(0, loc.total_regions), y = noisy_prob_map)
     
     #reduce number of ticks
-    plt.xticks(np.linspace(0, loc.total_regions,loc.total_regions // 4 ))
+    #plt.xticks(np.linspace(0, loc.total_regions,loc.total_regions // 4 ))
     
-    plt.show()
+    #plt.show()
 
 
