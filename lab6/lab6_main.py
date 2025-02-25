@@ -23,8 +23,8 @@ class Localization:
         
         #repeat each element of the list 4 times mantaining the order
         self.blocks_map = []
-        for el in self.map:
-            self.blocks_map.extend([el] * 4)
+        for el in blocks_map:
+            self.blocks_map.extend([el] * self.regions_per_sector)
         
         
     def motion_model(self, current_angle, sigma_region):
@@ -128,7 +128,7 @@ class Localization:
 
 if __name__ == "__main__":
     
-    blocks_map = {1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+    blocks_map = [1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     
     
     #loc = Localization(4, 0.5, block_threshold_upper=) 
