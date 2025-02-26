@@ -22,12 +22,17 @@ class Localization:
         #closest block is around 8, farthest around 28, maybe adjust this
         self.block_threshold_lower = block_threshold_lower
         self.block_threshold_upper = block_threshold_upper
+<<<<<<< Updated upstream
+=======
+        self.last_angle = None
+>>>>>>> Stashed changes
         
         #repeat each element of the list 4 times mantaining the order
         self.blocks_map = []
         for el in blocks_map:
             self.blocks_map.extend([el] * self.regions_per_sector)
         
+<<<<<<< Updated upstream
         
     def motion_model(self, current_angle, sigma_region):
         
@@ -77,12 +82,53 @@ class Localization:
     def _get_sector_from_region(self, region):
         
         if region < 0 or region > self.N_sectors * self.regions_per_sector: 
+=======
+    def motion_model(self, current_angle, sigma_region):
+        # On the first call, if last_angle is not set, initialize it with current_angle
+        if self.last_angle is None:
+            self.last_angle = current_angle
+            delta_angle = 0
+        else:
+            delta_angle = current_angle - self.last_angle
+            self.last_angle = current_angle
+        
+        # Compute region shift from delta_angle:
+        region_shift = int(round(delta_angle / self.angles_per_region))
+        # Continue with your motion model update using region_shift
+        shifted_map = np.roll(self.probabilities, region_shift)
+        region_indices = np.arange(self.total_regions)
+        gaussian_weights = stats.norm.pdf(region_indices, loc=(self.current_region + region_shift) % self.total_regions, scale=sigma_region)
+        gaussian_weights /= np.sum(gaussian_weights)
+        
+        noisy_prob_map = shifted_map * gaussian_weights
+        noisy_prob_map /= np.sum(noisy_prob_map)
+        
+        self.current_region = (self.current_region + region_shift) % self.total_regions
+        self.probabilities = noisy_prob_map
+        
+        return noisy_prob_map, gaussian_weights
+
+
+    def _get_region_from_angle(self, angle):
+        
+        if angle < 0 or angle > 360:
+            raise ValueError("Angle must be between 0 and 360")
+        
+        # Returns the corresponding sector of the angle
+        return int(angle / self.angles_per_region)   
+
+
+    def _get_sector_from_region(self, region):
+        
+        if region < 0 or region > self.N_sectors * self.regions_per_sector:
+>>>>>>> Stashed changes
             raise ValueError("Region must be between 0 and 64")
         
         # Returns the corresponding sector of the angle
         return int(region / self.regions_per_sector)
     
 
+<<<<<<< Updated upstream
     def sensor_model(self, distance_reading, d_expected, sigma):     
         """
         Returns P(z | x) for a sensor model with Gaussian noise.
@@ -141,6 +187,49 @@ class Localization:
             updated_bel /= updated_bel.sum()
         else:
             # In case of a numerical error, revert to the predicted belief.
+=======
+    def sensor_model(self, distance_reading, d_expected, sigma_sensor, region):
+        """
+        Returns a continuous likelihood that is more sensitive to differences.
+        """
+        # Use a Gaussian likelihood to reflect the error between the reading and expected distance.
+        likelihood = stats.norm.pdf(distance_reading, loc=d_expected, scale=sigma_sensor)
+        
+        # Amplify differences: if the sensor indicates a block and the region expects one, boost the likelihood.
+        if self.block_threshold_lower < distance_reading < self.block_threshold_upper:
+            if self.blocks_map[region] == 1:
+                likelihood *= 1.5  # Boost regions that match a detected block.
+            else:
+                likelihood *= 0.5  # Decrease regions where a block is not expected.
+        else:
+            if self.blocks_map[region] == 1:
+                likelihood *= 0.5  # Decrease regions that expect a block when none is detected.
+            else:
+                likelihood *= 1.0  # Leave likelihood unchanged.
+        
+        return likelihood
+
+    
+ 
+    
+    def integrated_update(self, distance_reading, current_angle, sigma_region=10, sigma_sensor=2, d_expected=18):
+        """
+        First performs the motion update then incorporates the sensor measurement.
+        """
+        # Motion update.
+        predicted_bel, _ = self.motion_model(current_angle, sigma_region)
+        
+        # Sensor update.
+        updated_bel = np.zeros_like(predicted_bel)
+        for region in range(self.total_regions):
+            likelihood = self.sensor_model(distance_reading, d_expected, sigma_sensor, region)
+            updated_bel[region] = predicted_bel[region] * likelihood
+        
+        # Normalize the updated belief.
+        if updated_bel.sum() > 0:
+            updated_bel /= updated_bel.sum()
+        else:
+>>>>>>> Stashed changes
             updated_bel = predicted_bel
         
         self.probabilities = updated_bel
@@ -197,3 +286,42 @@ class Localization:
     #plt.show()
 
 
+<<<<<<< Updated upstream
+=======
+#old motion model
+# def motion_model(self, current_angle, sigma_region):
+        
+#         #We defining a PMF for P(new_sector | current_sector, encoder_reading)
+        
+#         """
+#         Returns P(x' | x, u) for a simple noisy motion on a circle.
+#         80% chance to move exactly u steps, 10% each for +/-1 step.
+#         """
+        
+#         #shift probability map by the motion model
+        
+#         current_region = self._get_region_from_angle(current_angle)
+#         region_shift = current_region - self.current_region
+        
+#         self.current_region = current_region
+
+#         region_centers = np.arange(0, self.total_regions) 
+
+        
+#         if region_shift == 0:
+#             return self.probabilities, region_centers
+        
+#         shifted_map = np.roll(self.probabilities, region_shift)
+    
+#         region_centers = np.arange(0, self.total_regions) 
+    
+#         gaussian_weights = stats.norm.pdf(region_centers, loc = current_region, scale = sigma_region)
+#         gaussian_weights = gaussian_weights / np.sum(gaussian_weights)
+        
+#         noisy_prob_map = shifted_map * gaussian_weights
+#         noisy_prob_map /= np.sum(noisy_prob_map)  # Normalize again
+
+#         self.probabilities = noisy_prob_map
+        
+#         return  noisy_prob_map, gaussian_weights
+>>>>>>> Stashed changes

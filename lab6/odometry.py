@@ -2,21 +2,21 @@ import math
 from motorgo import Plink, ControlMode
 
 class Odometry:
-    def __init__(self, left_motor, right_motor, wheel_base, wheel_diameter, d_t, x_curr, y_curr, theta_curr):
+    def __init__(self, left_motor, right_motor, wheel_base, wheel_diameter, x_curr, y_curr, theta_curr):
         self.left_motor = left_motor  # Store left motor
         self.right_motor = right_motor  # Store right motor
         self.wheel_base = wheel_base  # Distance between the wheels
         self.wheel_diameter = wheel_diameter  # Diameter of the wheels
-        self.d_t = d_t  # time between steps
         self.x_curr = x_curr #starting odometry
         self.y_curr = y_curr
         self.theta_curr = theta_curr
+        #self.theta_prev = theta_prev
      
-    def update(self):
+    def update(self, d_t):
         wheelbase = self.wheel_base #copy some values to save space 
         diameter = self.wheel_diameter
-        d_t = self.d_t
         
+
         x_curr = self.x_curr 
         y_curr = self.y_curr
         theta_curr = self.theta_curr
@@ -32,7 +32,11 @@ class Odometry:
 
         theta_curr = (theta_curr + math.pi) % (2*math.pi) - math.pi
 
+        
         self.x_curr, self.y_curr, self.theta_curr = x_curr, y_curr, theta_curr
+
+    def get_theta(self):
+        return self.theta_curr
 
     def get_phi(self):
         """returns clockwise angular displacement from negative x axis in degrees from 0 to 360"""
@@ -49,8 +53,8 @@ class Odometry:
     def print_phi(self):
         print(self.get_phi())
 
-    def update_and_print(self):
-        self.update()
+    def update_and_print(self, d_t):
+        self.update(d_t)
         print(f"X: {self.x_curr}, Y: {self.y_curr}, Theta: {math.degrees(self.theta_curr)}")
         
         

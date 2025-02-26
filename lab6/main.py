@@ -28,22 +28,22 @@ right_to_light_sensor = 5.3125
 
 min_velocity = 3
 
-lower_threshold = 69.9 #lower light threshold
+lower_threshold = 35 #lower light threshold
 upper_threshold = 70.1 #upper light threshold
 
 #odometry constants (inches)
 wheel_base = 10.5 #if undershoot, decrease
-#prev 10.55
+#prev 10.4
 wheel_diameter = 1.215 #if undershoot, increase 
 #prev 1.2
 
-x_curr =  -10.75#center of wheel base radius from center when you start
+x_curr =  -5.6875 - wheel_base/2 #first number is distance from inside wheel to center at start
 y_curr = 0
 theta_curr = math.pi/2
 
 #miscellanious constants
 d_t = 0.03
-panic_time = 10 
+panic_time = 10
 
 
 #Initialize Plink and set velocity command PID constants
@@ -69,7 +69,7 @@ light_sensor = adafruit_bh1750.BH1750(i2c)
 #initialize line following object
 motor_speed_ratio = left_radius/right_radius
 light_sensor_distance_ratio = left_to_light_sensor/right_to_light_sensor
-line_follower = Line_follower(left_motor, right_motor, line_following_kp, line_following_ki, line_following_kd, motor_speed_ratio, light_sensor_distance_ratio, min_velocity, lower_threshold, upper_threshold, d_t)
+#line_follower = Line_follower(left_motor, right_motor, line_following_kp, line_following_ki, line_following_kd, motor_speed_ratio, light_sensor_distance_ratio, min_velocity, lower_threshold, upper_threshold, d_t)
 
 
 #main loop
@@ -80,23 +80,41 @@ if __name__ == "__main__":
     
 
     #initialize objects
+<<<<<<< Updated upstream
     odometry = Odometry(left_motor, right_motor, wheel_base, wheel_diameter, d_t, x_curr, y_curr, theta_curr)
     loc = Localization(2, block_threshold_upper=35, block_threshold_lower=5, blocks_map = blocks_map, goal_region = 6) 
+=======
+    odometry = Odometry(left_motor, right_motor, wheel_base, wheel_diameter, x_curr, y_curr, theta_curr)
+    loc = Localization(4, block_threshold_upper=30, block_threshold_lower=8, blocks_map = blocks_map, goal_region = 8) 
+>>>>>>> Stashed changes
     line_follower = Line_follower(left_motor, right_motor, line_following_kp, line_following_ki, line_following_kd, motor_speed_ratio, light_sensor_distance_ratio, min_velocity, lower_threshold, upper_threshold, d_t)
 
     #when high enough, go to goal
     goal_probability_threshold = 0.6
 
+<<<<<<< Updated upstream
 
     start_time = time.time()
     while True:
         loop_time = time.time()-start_time
         light_val = get_light()
+=======
+    time.sleep(3)
+    start_time = time.time()
+    prev_time = start_time
+
+    first_time = True
+    n = 0
+    while True:
+        loop_time = time.time()-start_time
+        light_val = light_sensor.lux
+>>>>>>> Stashed changes
 
         #line follow
         line_follower.update_velocities(light_val)
 
         #update odometry, get angle, get tof data
+<<<<<<< Updated upstream
         odometry.update()
         dist = read_data()
         current_angle = math.degrees(odometry.theta_curr) % 360
@@ -136,6 +154,53 @@ if __name__ == "__main__":
 
 
 
+=======
+        odometry.update(d_t+0.008)
+        #odometry.update(time.time() - prev_time)
+        #prev_time = time.time()
+    
+        n+=1
+        if n%10 == 0:
+            dist = read_data()
+            if first_time:
+                current_angle = 0.0
+                first_time = False
+            else:
+                current_angle = odometry.get_phi()
+            print(current_angle)
+            
+            t_start_probability = time.time()
+            if dist > 1: #not a bad value
+
+                #integrated update combines motion update with sensor update, CHANGE CURRENT ANGLE
+                belief = loc.integrated_update(dist, current_angle, sigma_region=10, sigma_sensor=2, d_expected=23)
+                
+                #gets index of most probable region
+                most_probable_region = np.argmax(belief)
+
+                #get target angle of most likely region
+                target_angle = most_probable_region * loc.angles_per_region
+
+                print(f"Probabilities: {belief[most_probable_region]}")#f"Current angle: {current_angle:.2f}°, "
+                print(f"Most probable region: {most_probable_region/4}")
+                
+                
+
+                #if we are adequately sure about best region and we've done at least 1 loop and were at the goal, STOP
+                if belief[loc.goal_region] > goal_probability_threshold and loop_time > 30 and loc.goal_region == loc.current_region:
+                    print(f"Probability {belief[loc.current_region]}, Stopped at Region {loc.current_region/loc.regions_per_sector}")
+
+                    left_motor.velocity_command = 0
+                    right_motor.velocity_command = 0
+                    #STOP WHEELS
+                    break
+                 #(loc.goal_region+2)%64
+                 #    
+            
+
+                #MIGHT NEED TO PLAY WITH SLEEP VALUE"""
+        time.sleep(d_t)
+>>>>>>> Stashed changes
 
 
 
