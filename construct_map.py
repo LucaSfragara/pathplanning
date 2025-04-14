@@ -136,72 +136,40 @@ def enlarge_obstacle(obstacle, robot_width):
     return Obstacle(*enlarged_lines)
 
 
-def construct_obstacles(isEasy, enlarge = False, robot_width = None):
+def construct_obstacles(enlarge = False, robot_width = None):
     # construct obstacles
     # Remeber that points are (X, Y)
 
-    easyObstacles = [
+    obstacles = [
         Obstacle(
-            Line((8, 12), (14, 12), "B"),
-            Line((14, 12), (14, 18), "R"),
-            Line((14, 18), (8, 18), "T"),
-            Line((8, 18), (8, 12), "L")
+            Line((7, 5), (9, 5), "B"),
+            Line((9, 5), (9, 7), "R"),
+            Line((9, 7), (7, 7), "T"),
+            Line((7, 7), (7, 5), "L")
+        ),
+    
+        Obstacle(
+            Line((2, 4), (4, 4), "B"),
+            Line((4, 4), (4, 6), "R"),
+            Line((5, 6), (2, 6), "T"),
+            Line((2, 6), (2, 4), "L")
+        ),
+        
+        Obstacle(
+            Line((5, 1), (6, 1), "B"),
+            Line((5, 1), (5, 3), "L"),
+            Line((5, 3), (6, 3), "T"),
+            Line((6, 1 ), (6, 3), "R")
         ),
         Obstacle(
-            Line((18, 12), (18 + 6, 12), "B"),
-            Line((18 + 6, 12), (18 + 6, 12 + 18), "R"),
-            Line((18 + 6, 12 + 18), (18, 12 + 18), "T"),
-            Line((18, 12 + 18), (18, 12), "L")
+            Line((6, 2), (7, 2), "B"),
+            Line((6, 2), (6, 3), "L"),
+            Line((7, 3), (7, 3), "T"),
+            Line((7, 2), (7, 3), "R")
         ),
-        Obstacle(
-            Line((16, 44), (16 + 6, 44), "B"),
-            Line((16 + 6, 44), (16 + 6, 44 + 6), "R"),
-            Line((16 + 6, 44 + 6), (16, 44 + 6), "T"),
-            Line((16, 44 + 6), (16, 44), "L")
-        ),
-        Obstacle(
-            Line((38, 36), (38 + 18, 36), "B"),
-            Line((38 + 18, 36), (38 + 18, 36 + 6), "R"),
-            Line((38 + 18, 36 + 6), (38, 36 + 6), "T"),
-            Line((38, 36 + 6), (38, 36), "L")
-        )
-    ]
-    hardObstacles = [
-        Obstacle(
-            Line((44, 4), (44 + 18/math.sqrt(2), 4 + 18/math.sqrt(2)), "BR"),
-            Line((44 + 18/math.sqrt(2), 4 + 18/math.sqrt(2)),
-                 (44 + 18/math.sqrt(2) - 6/math.sqrt(2), 4 + 18/math.sqrt(2) + 6/math.sqrt(2)), "TR"),
-            Line((44, 4), (44 - 6/math.sqrt(2), 4 + 6/math.sqrt(2)), "LB"),
-            Line((44 - 6/math.sqrt(2), 4 + 6/math.sqrt(2)),
-                 (44 - 6/math.sqrt(2) + 18/math.sqrt(2), 4 + 6/math.sqrt(2) + 18/math.sqrt(2)), "LT")
-        ),
-        Obstacle(
-            Line((23, 19), (23 + 10.25, 19), "B"),
-            Line((23 + 10.25, 19), (23 + 10.25, 19 + 9), "R"),
-            Line((23 + 10.25, 19 + 9), (23, 19 + 9), "T"),
-            Line((23, 19 + 9), (23, 19), "L")
-        ),
-        Obstacle(
-            Line((6, 34.5), (6 + 6, 34.5), "B"),
-            Line((6 + 6, 34.5), (6 + 6, 34.5 + 6), "R"),
-            Line((6 + 6, 34.5 + 6), (6, 34.5 + 6), "T"),
-            Line((6, 34.5 + 6), (6, 34.5), "L")
-        ),
-        Obstacle(
-            Line((40, 50), (40 + 18/math.sqrt(2), 50 - 18/math.sqrt(2)), "TR"),
-            Line((40 + 18/math.sqrt(2), 50 - 18/math.sqrt(2)),
-                 (40 + 18/math.sqrt(2) - 6/math.sqrt(2), 50 - 18/math.sqrt(2) - 6/math.sqrt(2)), "RB"),
-            Line((40, 50), (40 - 6/math.sqrt(2), 50 - 6/math.sqrt(2)), "LT"),
-            Line((40 - 6/math.sqrt(2), 50 - 6/math.sqrt(2)),
-                 (40 - 6/math.sqrt(2) + 18/math.sqrt(2), 50 - 6/math.sqrt(2) - 18/math.sqrt(2)), "LB")
-        )
+        
     ]
 
-    if isEasy:
-        obstacles = easyObstacles
-    else:
-        obstacles = hardObstacles # or hardObstacles
-    
     if enlarge: 
         obstacles_enlarged = []
         for obstacle in obstacles:
@@ -222,9 +190,9 @@ def check_obstacles(obstacles, x, y):
     return False
 
 
-def construct_map(isEasy, resolution, enlarge: bool, robot_width = None):
+def construct_map(resolution, enlarge: bool, robot_width = None):
 
-    obstacles = construct_obstacles(isEasy, enlarge=enlarge, robot_width=robot_width)
+    obstacles = construct_obstacles(enlarge=enlarge, robot_width=robot_width)
 
     # Discritize points and run through them:
 
@@ -236,8 +204,8 @@ def construct_map(isEasy, resolution, enlarge: bool, robot_width = None):
     # (anything larger than 20 takes a while)
     RESOLUTION = resolution
     # WIDTH and HEIGHT in inches of the course
-    MAP_WIDTH = 72
-    MAP_HEIGHT = 54
+    MAP_WIDTH = 13
+    MAP_HEIGHT = 9
 
     x_disc = MAP_WIDTH * RESOLUTION
     y_disc = MAP_HEIGHT * RESOLUTION
@@ -250,7 +218,7 @@ def construct_map(isEasy, resolution, enlarge: bool, robot_width = None):
         for row in range(y_disc):
             hit = check_obstacles(obstacles, col/RESOLUTION, row/RESOLUTION)
             img[row, col] = hit
-
+    print(img)
     return img
 
 
@@ -259,15 +227,18 @@ def construct_map(isEasy, resolution, enlarge: bool, robot_width = None):
 # that for some reason start with y values, then x values (blame plt, not me)
 
 # Example plt code using img result from construct_map:
-isEasy = True
+
 # Don't have less than 1 resolution...
 # RESOLUTION is the number of points you want per inch
 # (anything larger than 20 takes a while)
 
 if __name__ == "__main__":
-    resolution = 4
-    img = construct_map(isEasy, resolution, enlarge = True, robot_width=5)
-
+    resolution = 8
+    img = construct_map(resolution, enlarge = False, robot_width=5)
+    
+    #set x and y axis lenghts
+    plt.axis([0, 13*resolution, 0, 9*resolution])
+    
     plt.imshow(img, cmap=plt.cm.gray, origin='lower')
     plt.show()
 

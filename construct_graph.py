@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
-from construct_map import construct_map
+#from construct_map import construct_map
+from occupancy_grid import OccupancyGrid
 import itertools
 import heapq
 from typing import List, Tuple
@@ -168,7 +169,7 @@ class VisibilityGraph:
             contour_xy = contour_xy.reshape((-1, 1, 2))
             
             # Approximate the contour to a polygon with the specified tolerance.
-            approx = cv2.approxPolyDP(contour_xy, 2, True)
+            approx = cv2.approxPolyDP(contour_xy, 0.5, True)
             
             # Reshape to a simple list of points and flip back to (row, col) order.
             approx = approx.reshape(-1, 2)
@@ -180,7 +181,7 @@ class VisibilityGraph:
         
             
             for vertex in polygon: 
-                    circle = patches.Circle(vertex[::-1], 0.3*self.resolution ,edgecolor = "r", linewidth = 0.3*self.resolution, facecolor = "white")
+                    circle = patches.Circle(vertex[::-1], 0.1*self.resolution ,edgecolor = "r", linewidth = 0.05*self.resolution, facecolor = "white")
                     ax.add_patch(circle)
                     
                     if vertex[::-1][0] < 0 or vertex[::-1][0] > self.w-5 or vertex[::-1][1] < 0 or vertex[::-1][1] > self.h-5:
@@ -271,7 +272,7 @@ class VisibilityGraph:
             
             #Used for debug: plot current line if needed
             if ax: 
-                circle = patches.Circle((x1, y1), 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "none")
+                circle = patches.Circle((x1, y1), 0.05*self.resolution ,edgecolor = "w", linewidth = 0.05*self.resolution, facecolor = "none")
                 ax.add_patch(circle)
             
             if np.all(self.map[y1-1:y1+2, x1-1:x1+2]): #return False if there is an obstacle
@@ -286,10 +287,10 @@ class VisibilityGraph:
     def display(self, ax) -> None:
 
         #Plot start and end
-        circle_start = patches.Circle(self.start, 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "white")
+        circle_start = patches.Circle(self.start, 0.1*self.resolution ,edgecolor = "w", linewidth = 0.1*self.resolution, facecolor = "white")
         ax.add_patch(circle_start)
         
-        circle_end = patches.Circle(self.end, 0.3*self.resolution ,edgecolor = "w", linewidth = 0.3*self.resolution, facecolor = "white")
+        circle_end = patches.Circle(self.end, 0.1*self.resolution ,edgecolor = "w", linewidth = 0.1*self.resolution, facecolor = "white")
         ax.add_patch(circle_end)
         
         ax.imshow(self.map)
@@ -314,15 +315,25 @@ if __name__ == "__main__":
     #Initialize Visibility Graph
     fig, ax = plt.subplots(1)
     
-    RESOLUTION = 4
-    START = (10,50) #in inches
-    END = (60,50) #in inches
+   
+   
     ROBOT_WIDTH = 10
+    resolution= 16
     
-    map = construct_map(isEasy=True, resolution=RESOLUTION,enlarge=True, robot_width=ROBOT_WIDTH)
-    graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, RESOLUTION, ax, robot_width=ROBOT_WIDTH)
+    low_corner = (0, 0)
+    high_corner = (13, 9) # Match MAP_WIDTH, MAP_HEIGHT from construct_map
+   
+    START = (11,3) #in inches
+    END = (6,5) #in inches
+
+    # Create grid without enlargement
+    occ_grid = OccupancyGrid(low_corner, high_corner, resolution, enlarge=False)
+    map = occ_grid.get_boolean_grid()
+    map = map[:, :, np.newaxis]  # Add a new axis to make it (H, W, 1)
+    graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, resolution, ax, robot_width=ROBOT_WIDTH)
     graph.djistra_shortest_path(ax)
-    plt.title(f"Map (Axis are in pixels. 1 inch = {RESOLUTION} pixels)")
+    plt.title(f"Map (Axis are in pixels. 1 inch = {resolution} pixels)")
     graph.display(ax)
+    ax.invert_yaxis()  # Invert y-axis to match world coordinates
     plt.show()
     
