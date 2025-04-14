@@ -315,8 +315,9 @@ if __name__ == "__main__":
     #Initialize Visibility Graph
     fig, ax = plt.subplots(1)
     
-   
-   
+    RESOLUTION = 4
+    START = (10,49) #in inches
+    END = (65,10) #in inches
     ROBOT_WIDTH = 10
     resolution= 16
     
