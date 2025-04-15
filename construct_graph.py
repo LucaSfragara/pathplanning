@@ -316,19 +316,18 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1)
     
     RESOLUTION = 4
-    START = (10,49) #in inches
-    END = (65,10) #in inches
-    ROBOT_WIDTH = 10
+    
+    ROBOT_WIDTH = 1
     resolution= 16
     
     low_corner = (0, 0)
     high_corner = (13, 9) # Match MAP_WIDTH, MAP_HEIGHT from construct_map
    
-    START = (11,3) #in inches
-    END = (6,5) #in inches
+    START = (5,5) #in inches
+    END = (1,5) #in inches
 
     # Create grid without enlargement
-    occ_grid = OccupancyGrid(low_corner, high_corner, resolution, enlarge=False)
+    occ_grid = OccupancyGrid(low_corner, high_corner, resolution, enlarge=True, robot_width=ROBOT_WIDTH)
     map = occ_grid.get_boolean_grid()
     map = map[:, :, np.newaxis]  # Add a new axis to make it (H, W, 1)
     graph = VisibilityGraph(map, OBSTACLE_COORDINATES_EASY, START, END, resolution, ax, robot_width=ROBOT_WIDTH)
